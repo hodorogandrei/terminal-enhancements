@@ -106,6 +106,44 @@ Backups are stored in `~/.terminal-enhancements-backup/`.
 
 To customize, edit the enhancement files directly. Your changes will be preserved unless you re-run the installer and choose to overwrite.
 
+---
+
+## Technical Details
+
+### How the Installer Works
+
+1. **System Detection** (`lib/detect.sh`): Identifies your OS via `uname -s`, detects your Linux distribution by parsing `/etc/os-release` (checking both `$ID` and `$ID_LIKE` for derivatives), and finds available shells.
+
+2. **Package Manager Selection**: Priority order is `brew` → `apt` → `dnf` → `yum` → `pacman`. Homebrew takes precedence even on Linux if installed.
+
+3. **Tool Installation** (`lib/packages.sh`): Each tool has a dedicated installer function. For tools not in your distro's repos (common with `eza`, `zoxide` on older systems), the installer automatically falls back to Cargo (Rust's package manager), installing `rustup` first if needed.
+
+4. **Shell Configuration** (`lib/config.sh`): Enhancement files are copied to your home directory, and a source line is added to your shell's rc file (`.bashrc`, `.zshrc`, or `config.fish`).
+
+### Package Name Differences by Distro
+
+| Tool | Binary Name | Debian/Ubuntu Package | Other Distros |
+|------|-------------|----------------------|---------------|
+| bat | `bat` or `batcat` | `bat` (binary: `batcat`) | `bat` |
+| fd | `fd` or `fdfind` | `fd-find` (binary: `fdfind`) | `fd` |
+| ripgrep | `rg` | `ripgrep` | `ripgrep` |
+
+The installer creates aliases to normalize these differences across platforms.
+
+### Installation Methods by Tool
+
+| Tool | Primary Method | Fallback |
+|------|----------------|----------|
+| starship | Package manager (brew/pacman) | [starship.rs](https://starship.rs) install script |
+| fzf | Package manager | — |
+| zoxide | Package manager | Cargo (`cargo install zoxide`) |
+| eza | Package manager | Cargo (`cargo install eza`) |
+| bat | Package manager | — |
+| fd | Package manager | — |
+| ripgrep | Package manager | — |
+
+---
+
 ## License
 
 MIT License - See [LICENSE](LICENSE) for details.
