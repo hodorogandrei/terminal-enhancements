@@ -1,0 +1,230 @@
+# bash_enhancements - Cross-platform bash shell enhancement configuration
+# Source this file from .bashrc: [ -f /path/to/bash_enhancements ] && source /path/to/bash_enhancements
+
+# ==============================================================================
+# STARSHIP PROMPT
+# ==============================================================================
+if command -v starship &> /dev/null; then
+    eval "$(starship init bash)"
+fi
+
+# ==============================================================================
+# FZF - Fuzzy Finder
+# ==============================================================================
+if command -v fzf &> /dev/null; then
+    # Source fzf key bindings - check multiple locations for cross-platform support
+    # Linux (Debian/Ubuntu)
+    if [ -f /usr/share/doc/fzf/examples/key-bindings.bash ]; then
+        source /usr/share/doc/fzf/examples/key-bindings.bash
+    # Linux (Fedora/RHEL/Arch)
+    elif [ -f /usr/share/fzf/key-bindings.bash ]; then
+        source /usr/share/fzf/key-bindings.bash
+    # macOS (Homebrew ARM)
+    elif [ -f /opt/homebrew/opt/fzf/shell/key-bindings.bash ]; then
+        source /opt/homebrew/opt/fzf/shell/key-bindings.bash
+    # macOS (Homebrew Intel)
+    elif [ -f /usr/local/opt/fzf/shell/key-bindings.bash ]; then
+        source /usr/local/opt/fzf/shell/key-bindings.bash
+    # User installation
+    elif [ -f "${HOME}/.fzf/shell/key-bindings.bash" ]; then
+        source "${HOME}/.fzf/shell/key-bindings.bash"
+    fi
+
+    # Source fzf bash completion - check multiple locations
+    # Linux (Debian/Ubuntu)
+    if [ -f /usr/share/bash-completion/completions/fzf ]; then
+        source /usr/share/bash-completion/completions/fzf
+    # Linux (Fedora/RHEL/Arch)
+    elif [ -f /usr/share/fzf/completion.bash ]; then
+        source /usr/share/fzf/completion.bash
+    # macOS (Homebrew ARM)
+    elif [ -f /opt/homebrew/opt/fzf/shell/completion.bash ]; then
+        source /opt/homebrew/opt/fzf/shell/completion.bash
+    # macOS (Homebrew Intel)
+    elif [ -f /usr/local/opt/fzf/shell/completion.bash ]; then
+        source /usr/local/opt/fzf/shell/completion.bash
+    # User installation
+    elif [ -f "${HOME}/.fzf/shell/completion.bash" ]; then
+        source "${HOME}/.fzf/shell/completion.bash"
+    fi
+
+    # Use fd for fzf if available (faster than find)
+    # Handle both Debian naming (fdfind) and standard naming (fd)
+    if command -v fdfind &> /dev/null; then
+        export FZF_DEFAULT_COMMAND='fdfind --type f --hidden --follow --exclude .git'
+        export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+        export FZF_ALT_C_COMMAND='fdfind --type d --hidden --follow --exclude .git'
+    elif command -v fd &> /dev/null; then
+        export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+        export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+        export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
+    fi
+
+    # FZF appearance settings
+    export FZF_DEFAULT_OPTS='
+        --height 40%
+        --layout=reverse
+        --border rounded
+        --info=inline
+        --marker="*"
+        --pointer=">"
+        --prompt="> "
+    '
+
+    # Ctrl+R enhanced history search with preview
+    export FZF_CTRL_R_OPTS='
+        --preview "echo {}"
+        --preview-window down:3:wrap
+    '
+fi
+
+# ==============================================================================
+# ZOXIDE - Smart cd
+# ==============================================================================
+if command -v zoxide &> /dev/null; then
+    eval "$(zoxide init bash)"
+    # Usage: 'z' for smart jump, 'zi' for interactive selection
+fi
+
+# ==============================================================================
+# ALIASES - eza (modern ls replacement)
+# ==============================================================================
+if command -v eza &> /dev/null; then
+    alias ls='eza --icons --group-directories-first'
+    alias ll='eza -la --icons --group-directories-first --git'
+    alias la='eza -a --icons --group-directories-first'
+    alias lt='eza --tree --level=2 --icons'
+    alias lta='eza --tree --level=2 --icons -a'
+    alias ltl='eza --tree --level=3 --icons --git -la'
+fi
+
+# ==============================================================================
+# ALIASES - bat (better cat with syntax highlighting)
+# ==============================================================================
+# Handle both Debian naming (batcat) and standard naming (bat)
+if command -v batcat &> /dev/null; then
+    # Debian/Ubuntu systems use 'batcat'
+    alias bat='batcat'
+    alias cat='batcat --paging=never'
+    alias catp='batcat'  # with pager
+    export MANPAGER="sh -c 'col -bx | batcat -l man -p'"
+elif command -v bat &> /dev/null; then
+    # Standard naming on macOS, Arch, Fedora, etc.
+    alias cat='bat --paging=never'
+    alias catp='bat'  # with pager
+    export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+fi
+
+# ==============================================================================
+# ALIASES - fd (better find)
+# ==============================================================================
+# Handle Debian naming (fdfind) - create fd alias if needed
+if command -v fdfind &> /dev/null && ! command -v fd &> /dev/null; then
+    alias fd='fdfind'
+fi
+
+# ==============================================================================
+# FUNCTION: fcd - Fuzzy cd with fzf
+# ==============================================================================
+fcd() {
+    local dir
+    local fd_cmd=""
+    local preview_cmd="ls -la"
+
+    # Determine which fd variant is available
+    if command -v fdfind &> /dev/null; then
+        fd_cmd="fdfind"
+    elif command -v fd &> /dev/null; then
+        fd_cmd="fd"
+    else
+        echo "fcd: requires fd or fdfind to be installed" >&2
+        return 1
+    fi
+
+    # Check for fzf
+    if ! command -v fzf &> /dev/null; then
+        echo "fcd: requires fzf to be installed" >&2
+        return 1
+    fi
+
+    # Use eza for preview if available
+    if command -v eza &> /dev/null; then
+        preview_cmd="eza --tree --level=1 --icons"
+    fi
+
+    dir=$($fd_cmd --type d --hidden --follow --exclude .git 2>/dev/null | fzf --preview "$preview_cmd {}")
+    if [ -n "$dir" ]; then
+        cd "$dir" || return 1
+    fi
+}
+
+# ==============================================================================
+# FUNCTION: fe - Fuzzy edit with fzf
+# ==============================================================================
+fe() {
+    local file
+    local preview_cmd="head -100"
+
+    # Check for fzf
+    if ! command -v fzf &> /dev/null; then
+        echo "fe: requires fzf to be installed" >&2
+        return 1
+    fi
+
+    # Use bat/batcat for preview if available
+    if command -v batcat &> /dev/null; then
+        preview_cmd="batcat --style=numbers --color=always"
+    elif command -v bat &> /dev/null; then
+        preview_cmd="bat --style=numbers --color=always"
+    fi
+
+    file=$(fzf --preview "$preview_cmd {}")
+    if [ -n "$file" ]; then
+        ${EDITOR:-vim} "$file"
+    fi
+}
+
+# ==============================================================================
+# FUNCTION: extract - Extract various archive formats
+# ==============================================================================
+extract() {
+    if [ -z "$1" ]; then
+        echo "Usage: extract <archive_file>" >&2
+        return 1
+    fi
+
+    if [ ! -f "$1" ]; then
+        echo "extract: '$1' is not a valid file" >&2
+        return 1
+    fi
+
+    case "$1" in
+        *.tar.bz2)   tar xjf "$1"     ;;
+        *.tar.gz)    tar xzf "$1"     ;;
+        *.tar.xz)    tar xJf "$1"     ;;
+        *.tar.zst)   tar --zstd -xf "$1" ;;
+        *.bz2)       bunzip2 "$1"     ;;
+        *.rar)       unrar x "$1"     ;;
+        *.gz)        gunzip "$1"      ;;
+        *.tar)       tar xf "$1"      ;;
+        *.tbz2)      tar xjf "$1"     ;;
+        *.tgz)       tar xzf "$1"     ;;
+        *.zip)       unzip "$1"       ;;
+        *.Z)         uncompress "$1"  ;;
+        *.7z)        7z x "$1"        ;;
+        *.xz)        unxz "$1"        ;;
+        *.zst)       unzstd "$1"      ;;
+        *)           echo "extract: '$1' - unknown archive format" >&2; return 1 ;;
+    esac
+}
+
+# ==============================================================================
+# FUNCTION: mkcd - Create directory and cd into it
+# ==============================================================================
+mkcd() {
+    if [ -z "$1" ]; then
+        echo "Usage: mkcd <directory_name>" >&2
+        return 1
+    fi
+    mkdir -p "$1" && cd "$1" || return 1
+}
