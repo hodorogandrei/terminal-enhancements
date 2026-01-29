@@ -19,13 +19,13 @@ A one-command installer for modern terminal tools. Upgrade your shell with fuzzy
 **One-liner (curl-to-bash):**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/USER/terminal-enhancements/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/hodorogandrei/terminal-enhancements/main/install.sh | bash
 ```
 
 **Or clone and run:**
 
 ```bash
-git clone https://github.com/USER/terminal-enhancements.git
+git clone https://github.com/hodorogandrei/terminal-enhancements.git
 cd terminal-enhancements
 ./install.sh
 ```
