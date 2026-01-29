@@ -1,0 +1,221 @@
+# fish_enhancements - Cross-platform fish shell enhancement configuration
+# Source this file from config.fish: source /path/to/fish_enhancements
+
+# ==============================================================================
+# STARSHIP PROMPT
+# ==============================================================================
+if type -q starship
+    starship init fish | source
+end
+
+# ==============================================================================
+# FZF - Fuzzy Finder
+# ==============================================================================
+if type -q fzf
+    # Source fzf key bindings - check multiple locations for cross-platform support
+    # Linux (Debian/Ubuntu)
+    if test -f /usr/share/doc/fzf/examples/key-bindings.fish
+        source /usr/share/doc/fzf/examples/key-bindings.fish
+    # Linux (Fedora/RHEL/Arch)
+    else if test -f /usr/share/fzf/key-bindings.fish
+        source /usr/share/fzf/key-bindings.fish
+    # macOS (Homebrew ARM)
+    else if test -f /opt/homebrew/opt/fzf/shell/key-bindings.fish
+        source /opt/homebrew/opt/fzf/shell/key-bindings.fish
+    # macOS (Homebrew Intel)
+    else if test -f /usr/local/opt/fzf/shell/key-bindings.fish
+        source /usr/local/opt/fzf/shell/key-bindings.fish
+    # User installation
+    else if test -f "$HOME/.fzf/shell/key-bindings.fish"
+        source "$HOME/.fzf/shell/key-bindings.fish"
+    end
+
+    # Use fd for fzf if available (faster than find)
+    # Handle both Debian naming (fdfind) and standard naming (fd)
+    if type -q fdfind
+        set -gx FZF_DEFAULT_COMMAND 'fdfind --type f --hidden --follow --exclude .git'
+        set -gx FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
+        set -gx FZF_ALT_C_COMMAND 'fdfind --type d --hidden --follow --exclude .git'
+    else if type -q fd
+        set -gx FZF_DEFAULT_COMMAND 'fd --type f --hidden --follow --exclude .git'
+        set -gx FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
+        set -gx FZF_ALT_C_COMMAND 'fd --type d --hidden --follow --exclude .git'
+    end
+
+    # FZF appearance settings
+    set -gx FZF_DEFAULT_OPTS '--height 40% --layout=reverse --border rounded --info=inline --marker="*" --pointer=">" --prompt="> "'
+
+    # Ctrl+R enhanced history search with preview
+    set -gx FZF_CTRL_R_OPTS '--preview "echo {}" --preview-window down:3:wrap'
+end
+
+# ==============================================================================
+# ZOXIDE - Smart cd
+# ==============================================================================
+if type -q zoxide
+    zoxide init fish | source
+    # Usage: 'z' for smart jump, 'zi' for interactive selection
+end
+
+# ==============================================================================
+# ABBREVIATIONS - eza (modern ls replacement)
+# Fish abbreviations expand when you press space, providing better visibility
+# ==============================================================================
+if type -q eza
+    abbr -a ls 'eza --icons --group-directories-first'
+    abbr -a ll 'eza -la --icons --group-directories-first --git'
+    abbr -a la 'eza -a --icons --group-directories-first'
+    abbr -a lt 'eza --tree --level=2 --icons'
+    abbr -a lta 'eza --tree --level=2 --icons -a'
+    abbr -a ltl 'eza --tree --level=3 --icons --git -la'
+end
+
+# ==============================================================================
+# ABBREVIATIONS - bat (better cat with syntax highlighting)
+# ==============================================================================
+# Handle both Debian naming (batcat) and standard naming (bat)
+if type -q batcat
+    # Debian/Ubuntu systems use 'batcat'
+    abbr -a bat 'batcat'
+    abbr -a cat 'batcat --paging=never'
+    abbr -a catp 'batcat'
+    set -gx MANPAGER "sh -c 'col -bx | batcat -l man -p'"
+else if type -q bat
+    # Standard naming on macOS, Arch, Fedora, etc.
+    abbr -a cat 'bat --paging=never'
+    abbr -a catp 'bat'
+    set -gx MANPAGER "sh -c 'col -bx | bat -l man -p'"
+end
+
+# ==============================================================================
+# ABBREVIATIONS - fd (better find)
+# ==============================================================================
+# Handle Debian naming (fdfind) - create fd abbreviation if needed
+if type -q fdfind; and not type -q fd
+    abbr -a fd 'fdfind'
+end
+
+# ==============================================================================
+# FUNCTION: fcd - Fuzzy cd with fzf
+# ==============================================================================
+function fcd --description "Fuzzy cd with fzf and fd"
+    set -l fd_cmd ""
+    set -l preview_cmd "ls -la"
+
+    # Determine which fd variant is available
+    if type -q fdfind
+        set fd_cmd "fdfind"
+    else if type -q fd
+        set fd_cmd "fd"
+    else
+        echo "fcd: requires fd or fdfind to be installed" >&2
+        return 1
+    end
+
+    # Check for fzf
+    if not type -q fzf
+        echo "fcd: requires fzf to be installed" >&2
+        return 1
+    end
+
+    # Use eza for preview if available
+    if type -q eza
+        set preview_cmd "eza --tree --level=1 --icons"
+    end
+
+    set -l dir (eval $fd_cmd --type d --hidden --follow --exclude .git 2>/dev/null | fzf --preview "$preview_cmd {}")
+    if test -n "$dir"
+        cd "$dir"
+    end
+end
+
+# ==============================================================================
+# FUNCTION: fe - Fuzzy edit with fzf
+# ==============================================================================
+function fe --description "Fuzzy file edit with fzf"
+    set -l preview_cmd "head -100"
+
+    # Check for fzf
+    if not type -q fzf
+        echo "fe: requires fzf to be installed" >&2
+        return 1
+    end
+
+    # Use bat/batcat for preview if available
+    if type -q batcat
+        set preview_cmd "batcat --style=numbers --color=always"
+    else if type -q bat
+        set preview_cmd "bat --style=numbers --color=always"
+    end
+
+    set -l file (fzf --preview "$preview_cmd {}")
+    if test -n "$file"
+        if set -q EDITOR
+            $EDITOR "$file"
+        else
+            vim "$file"
+        end
+    end
+end
+
+# ==============================================================================
+# FUNCTION: extract - Extract various archive formats
+# ==============================================================================
+function extract --description "Extract various archive formats"
+    if test (count $argv) -eq 0
+        echo "Usage: extract <archive_file>" >&2
+        return 1
+    end
+
+    if not test -f "$argv[1]"
+        echo "extract: '$argv[1]' is not a valid file" >&2
+        return 1
+    end
+
+    switch "$argv[1]"
+        case '*.tar.bz2'
+            tar xjf "$argv[1]"
+        case '*.tar.gz'
+            tar xzf "$argv[1]"
+        case '*.tar.xz'
+            tar xJf "$argv[1]"
+        case '*.tar.zst'
+            tar --zstd -xf "$argv[1]"
+        case '*.bz2'
+            bunzip2 "$argv[1]"
+        case '*.rar'
+            unrar x "$argv[1]"
+        case '*.gz'
+            gunzip "$argv[1]"
+        case '*.tar'
+            tar xf "$argv[1]"
+        case '*.tbz2'
+            tar xjf "$argv[1]"
+        case '*.tgz'
+            tar xzf "$argv[1]"
+        case '*.zip'
+            unzip "$argv[1]"
+        case '*.Z'
+            uncompress "$argv[1]"
+        case '*.7z'
+            7z x "$argv[1]"
+        case '*.xz'
+            unxz "$argv[1]"
+        case '*.zst'
+            unzstd "$argv[1]"
+        case '*'
+            echo "extract: '$argv[1]' - unknown archive format" >&2
+            return 1
+    end
+end
+
+# ==============================================================================
+# FUNCTION: mkcd - Create directory and cd into it
+# ==============================================================================
+function mkcd --description "Create directory and cd into it"
+    if test (count $argv) -eq 0
+        echo "Usage: mkcd <directory_name>" >&2
+        return 1
+    end
+    mkdir -p "$argv[1]"; and cd "$argv[1]"
+end
