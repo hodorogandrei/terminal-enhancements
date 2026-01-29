@@ -23,49 +23,55 @@ detect_distro() {
 
     # Check /etc/os-release
     if [ -f /etc/os-release ]; then
-        # Source the file to get ID and ID_LIKE variables
-        # shellcheck disable=SC1091
-        . /etc/os-release
+        # Use subshell to avoid polluting caller's namespace with sourced variables
+        result=$(
+            # shellcheck disable=SC1091
+            . /etc/os-release
 
-        # Check ID first for exact match
-        case "$ID" in
-            debian|ubuntu|linuxmint|pop|elementary|zorin|kali)
-                echo "debian"
-                return
-                ;;
-            fedora)
-                echo "fedora"
-                return
-                ;;
-            rhel|centos|rocky|alma|oracle|scientific)
-                echo "rhel"
-                return
-                ;;
-            arch|manjaro|endeavouros|garuda|artix)
-                echo "arch"
-                return
-                ;;
-        esac
+            # Check ID first for exact match
+            case "$ID" in
+                debian|ubuntu|linuxmint|pop|elementary|zorin|kali)
+                    echo "debian"
+                    exit 0
+                    ;;
+                fedora)
+                    echo "fedora"
+                    exit 0
+                    ;;
+                rhel|centos|rocky|alma|oracle|scientific)
+                    echo "rhel"
+                    exit 0
+                    ;;
+                arch|manjaro|endeavouros|garuda|artix)
+                    echo "arch"
+                    exit 0
+                    ;;
+            esac
 
-        # Check ID_LIKE for derivatives
-        case "$ID_LIKE" in
-            *debian*|*ubuntu*)
-                echo "debian"
-                return
-                ;;
-            *fedora*)
-                echo "fedora"
-                return
-                ;;
-            *rhel*|*centos*)
-                echo "rhel"
-                return
-                ;;
-            *arch*)
-                echo "arch"
-                return
-                ;;
-        esac
+            # Check ID_LIKE for derivatives
+            case "$ID_LIKE" in
+                *debian*|*ubuntu*)
+                    echo "debian"
+                    exit 0
+                    ;;
+                *fedora*)
+                    echo "fedora"
+                    exit 0
+                    ;;
+                *rhel*|*centos*)
+                    echo "rhel"
+                    exit 0
+                    ;;
+                *arch*)
+                    echo "arch"
+                    exit 0
+                    ;;
+            esac
+        )
+        if [ -n "$result" ]; then
+            echo "$result"
+            return
+        fi
     fi
 
     # Fallback detection using release files
@@ -160,17 +166,20 @@ get_distro_name() {
         linux)
             # Use PRETTY_NAME from /etc/os-release
             if [ -f /etc/os-release ]; then
-                # shellcheck disable=SC1091
-                . /etc/os-release
-                if [ -n "$PRETTY_NAME" ]; then
-                    echo "$PRETTY_NAME"
-                elif [ -n "$NAME" ] && [ -n "$VERSION" ]; then
-                    echo "$NAME $VERSION"
-                elif [ -n "$NAME" ]; then
-                    echo "$NAME"
-                else
-                    echo "Linux"
-                fi
+                # Use subshell to avoid polluting caller's namespace with sourced variables
+                (
+                    # shellcheck disable=SC1091
+                    . /etc/os-release
+                    if [ -n "$PRETTY_NAME" ]; then
+                        echo "$PRETTY_NAME"
+                    elif [ -n "$NAME" ] && [ -n "$VERSION" ]; then
+                        echo "$NAME $VERSION"
+                    elif [ -n "$NAME" ]; then
+                        echo "$NAME"
+                    else
+                        echo "Linux"
+                    fi
+                )
             else
                 echo "Linux"
             fi
