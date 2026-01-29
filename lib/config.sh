@@ -61,7 +61,7 @@ has_source_line() {
     _rc_file="$1"
     _source_file="$2"
 
-    [ -f "$_rc_file" ] && grep -q "$_source_file" "$_rc_file" 2>/dev/null
+    [ -f "$_rc_file" ] && grep -Fq "$_source_file" "$_rc_file" 2>/dev/null
 }
 
 # add_source_line(rc_file, source_file) - Add source line
@@ -241,7 +241,7 @@ remove_shell_config() {
         # Find the latest backup
         _latest_backup=""
         if [ -d "$BACKUP_DIR" ]; then
-            _latest_backup=$(ls -t "$BACKUP_DIR/${_basename}".* 2>/dev/null | head -1)
+            _latest_backup=$(ls -t "$BACKUP_DIR/${_basename}".* 2>/dev/null | head -1) || _latest_backup=""
         fi
 
         if [ -n "$_latest_backup" ]; then
@@ -264,7 +264,7 @@ remove_shell_config() {
     if [ -f "$_rc_file" ]; then
         # Create temp file without the terminal-enhancements lines
         _temp_file="${_rc_file}.tmp.$$"
-        grep -v "Terminal Enhancements\|terminal-enhancements\|${_config_file}" "$_rc_file" > "$_temp_file" 2>/dev/null || true
+        grep -v "Terminal Enhancements" "$_rc_file" | grep -v "terminal-enhancements" | grep -Fv "$_config_file" > "$_temp_file" 2>/dev/null || true
         mv "$_temp_file" "$_rc_file"
         print_success "Removed source line from $_rc_file" 2>/dev/null || echo "Removed source line from $_rc_file"
     fi
