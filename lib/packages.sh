@@ -3,22 +3,23 @@
 # POSIX-compliant for maximum compatibility
 
 # Source detect.sh for package manager detection
-# Get the directory of this script
+# Try multiple approaches to find detect.sh
 _LIB_DIR="${0%/*}"
-if [ "$_LIB_DIR" = "$0" ]; then
-    _LIB_DIR="."
-fi
+[ "$_LIB_DIR" = "$0" ] && _LIB_DIR="."
 
-# Try to source detect.sh from various locations
+# Check relative to script, then relative to current dir
 if [ -f "${_LIB_DIR}/detect.sh" ]; then
     # shellcheck disable=SC1091
     . "${_LIB_DIR}/detect.sh"
-elif [ -f "$(dirname "$0")/lib/detect.sh" ]; then
+elif [ -f "${_LIB_DIR}/lib/detect.sh" ]; then
     # shellcheck disable=SC1091
-    . "$(dirname "$0")/lib/detect.sh"
+    . "${_LIB_DIR}/lib/detect.sh"
 elif [ -f "./lib/detect.sh" ]; then
     # shellcheck disable=SC1091
     . "./lib/detect.sh"
+elif [ -f "$(dirname "$0")/lib/detect.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$(dirname "$0")/lib/detect.sh"
 fi
 
 # get_package_name(tool, pm) - Returns distro-specific package name
@@ -278,14 +279,20 @@ install_via_cargo() {
     if ! command -v cargo >/dev/null 2>&1; then
         # Try to install rustup
         if command -v curl >/dev/null 2>&1; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            if ! curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
+                echo "Failed to install Rust toolchain" >&2
+                return 1
+            fi
             # Source cargo env for current session
             if [ -f "$HOME/.cargo/env" ]; then
                 # shellcheck disable=SC1091
                 . "$HOME/.cargo/env"
             fi
         elif command -v wget >/dev/null 2>&1; then
-            wget -qO- https://sh.rustup.rs | sh -s -- -y
+            if ! wget -qO- https://sh.rustup.rs | sh -s -- -y; then
+                echo "Failed to install Rust toolchain" >&2
+                return 1
+            fi
             if [ -f "$HOME/.cargo/env" ]; then
                 # shellcheck disable=SC1091
                 . "$HOME/.cargo/env"
