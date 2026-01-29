@@ -1,6 +1,6 @@
 #!/bin/sh
 # uninstall.sh - Terminal Enhancements Uninstaller
-# https://github.com/USER/terminal-enhancements
+# https://github.com/hodorogandrei/terminal-enhancements
 #
 # POSIX-compliant uninstaller for terminal enhancements
 # Removes shell configurations and optionally uninstalls packages

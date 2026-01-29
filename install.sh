@@ -1,18 +1,18 @@
 #!/bin/sh
 # install.sh - Terminal Enhancements Installer
-# https://github.com/USER/terminal-enhancements
+# https://github.com/hodorogandrei/terminal-enhancements
 #
 # POSIX-compliant installer for modern terminal tools:
 # starship, fzf, zoxide, eza, bat, fd, ripgrep
 #
 # Usage:
 #   Direct:      ./install.sh
-#   curl-to-bash: curl -fsSL https://raw.githubusercontent.com/USER/terminal-enhancements/main/install.sh | bash
+#   curl-to-bash: curl -fsSL https://raw.githubusercontent.com/hodorogandrei/terminal-enhancements/main/install.sh | bash
 
 set -e
 
 VERSION="1.0.0"
-REPO_URL="https://github.com/USER/terminal-enhancements.git"
+REPO_URL="https://github.com/hodorogandrei/terminal-enhancements.git"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DETERMINE SCRIPT LOCATION
