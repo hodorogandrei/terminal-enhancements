@@ -125,7 +125,8 @@ install_package() {
             return $?
             ;;
         apt)
-            sudo apt-get update -qq && sudo apt-get install -y "$_pkg"
+            sudo apt-get update -qq -o DPkg::Lock::Timeout=60 && \
+            sudo apt-get install -y -o DPkg::Lock::Timeout=60 "$_pkg"
             return $?
             ;;
         dnf)
