@@ -214,6 +214,36 @@ main() {
     # Install tools
     printf '\n%s%sInstalling selected tools...%s\n\n' "${BOLD}" "${CYAN}" "${RESET}"
 
+    # Pre-acquire sudo credentials so the password prompt is not swallowed
+    # by output redirection during individual tool installs
+    if [ "$(id -u)" -ne 0 ]; then
+        _needs_sudo=0
+        for _tool in $selected; do
+            if ! is_installed "$_tool"; then
+                _needs_sudo=1
+                break
+            fi
+        done
+        if [ "$_needs_sudo" = "1" ]; then
+            print_info "Sudo access is needed to install packages."
+            if ! sudo -v 2>/dev/null; then
+                print_error "Failed to obtain sudo credentials. Cannot install packages."
+                exit 1
+            fi
+            # Wait for any active apt locks before starting installs
+            if command -v fuser >/dev/null 2>&1; then
+                if sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+                   sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; then
+                    print_info "Waiting for other package managers to finish..."
+                    while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+                          sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+                        sleep 2
+                    done
+                fi
+            fi
+        fi
+    fi
+
     failed=""
     succeeded=""
 
